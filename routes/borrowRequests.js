@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Book = require('../models/Book');
 const BorrowRequest = require('../models/BorrowRequest');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { calculateFine } = require('../utils/fine');
 
 const router = express.Router();
 const FINE_PER_DAY = 0.25;
@@ -104,10 +105,8 @@ router.patch('/:id', requireAuth, requireRole('librarian'), async (req, res, nex
     request.status = req.body.status;
     if (req.body.status === 'returned') {
       const returnedAt = new Date();
-      const lateMilliseconds = returnedAt.getTime() - request.dueAt.getTime();
-      const lateDays = lateMilliseconds > 0 ? Math.ceil(lateMilliseconds / (24 * 60 * 60 * 1000)) : 0;
       request.returnedAt = returnedAt;
-      request.fine = Math.round(lateDays * FINE_PER_DAY * 100) / 100;
+      request.fine = calculateFine(request.dueAt, returnedAt, FINE_PER_DAY);
     } else {
       request.returnedAt = null;
       request.fine = 0;

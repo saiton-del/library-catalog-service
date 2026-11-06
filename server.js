@@ -16,6 +16,11 @@ if (!jwtSecret || jwtSecret.length < 32) {
   process.exit(1);
 }
 
+if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGINS) {
+  console.error('CORS_ORIGINS must list the exact frontend origin(s) in production.');
+  process.exit(1);
+}
+
 mongoose
   .connect(mongoUri)
   .then(() => {

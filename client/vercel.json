@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/catalog/books/:path*", "destination": "https://library-catalog-api.onrender.com/books/:path*" },
+    { "source": "/catalog/genres/:path*", "destination": "https://library-catalog-api.onrender.com/genres/:path*" },
+    { "source": "/api/:path*", "destination": "https://library-catalog-api.onrender.com/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

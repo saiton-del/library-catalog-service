@@ -1,5 +1,6 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
 const authRouter = require('./routes/auth');
 const booksRouter = require('./routes/books');
 const bookingsRouter = require('./routes/bookings');
@@ -8,9 +9,35 @@ const genresRouter = require('./routes/genres');
 const usersRouter = require('./routes/users');
 
 const app = express();
+const configuredOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? configuredOrigins
+  : [...new Set([...configuredOrigins, 'http://localhost:5173', 'http://localhost:4173'])];
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
 
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+app.use((req, res, next) => {
+  const isStateChanging = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+  const origin = req.get('Origin');
+  if (process.env.NODE_ENV === 'production' && isStateChanging && origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ error: 'Request origin is not allowed.' });
+  }
+  return next();
+});
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/borrow-requests', borrowRequestsRouter);

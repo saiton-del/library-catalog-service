@@ -16,7 +16,14 @@ export async function fetchJson(path, options = {}) {
     request.body = JSON.stringify(requestOptions.body);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, request);
+  const proxiedPath = API_BASE_URL
+    ? path
+    : path.startsWith('/books')
+      ? path.replace(/^\/books/, '/catalog/books')
+      : path.startsWith('/genres')
+        ? path.replace(/^\/genres/, '/catalog/genres')
+        : path;
+  const response = await fetch(`${API_BASE_URL}${proxiedPath}`, request);
   const contentType = response.headers.get('content-type') || '';
   const body = contentType.includes('application/json') ? await response.json() : null;
 
