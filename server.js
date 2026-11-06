@@ -4,9 +4,15 @@ const app = require('./app');
 
 const port = Number(process.env.PORT) || 3000;
 const mongoUri = process.env.MONGODB_URI;
+const jwtSecret = process.env.JWT_SECRET;
 
 if (!mongoUri) {
   console.error('MONGODB_URI is not set. Add it to your .env file.');
+  process.exit(1);
+}
+
+if (!jwtSecret || jwtSecret.length < 32) {
+  console.error('JWT_SECRET must be set to a random secret of at least 32 characters.');
   process.exit(1);
 }
 

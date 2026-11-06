@@ -8,15 +8,28 @@ An Express and MongoDB/Mongoose REST API for a library catalog. Books reference 
 - MongoDB (local or Atlas)
 
 1. Run `npm install`.
-2. Copy `.env.example` to `.env` and set `MONGODB_URI` to your connection string. `.env` is ignored by Git.
+2. Copy `.env.example` to `.env`, set `MONGODB_URI`, and replace `JWT_SECRET` with a random secret of at least 32 characters. Keep `.env` private; it is ignored by Git.
 3. Optionally run `npm run seed` to replace the current books and genres with the sample catalog.
 4. Start the API with `npm start` (or `npm run dev` for Node's watch mode). The default URL is `http://localhost:3000`; set `PORT` to change it.
 
-The seed command clears the existing `books` and `genres` documents before inserting four genres and sixteen books. It logs inserted totals and closes the MongoDB connection even if seeding fails.
+The seed command clears the existing `books` and `genres` documents before inserting four genres and sixteen books. It also removes existing librarian-role accounts and creates exactly one test librarian; other user accounts are preserved. It logs inserted totals and closes the MongoDB connection even if seeding fails. **Test librarian:** `librarian@example.com` / `LibraryAdmin123!`. This known password is for local assignment testing only; change or remove the account before production use.
 
 ## API
 
 All request and response bodies use JSON. Create and update requests reject missing, unknown, or incorrectly typed fields with HTTP 400 and a field-specific `fields` array. Invalid JSON, IDs, duplicate unique values, and nonexistent book genre references also return JSON errors rather than database error details.
+
+### Authentication and users
+
+| Method | Endpoint | Success / access |
+| --- | --- | --- |
+| POST | `/api/auth/register` | `201`; creates a patron account (role cannot be set by the client) |
+| POST | `/api/auth/login` | `200`; verifies credentials and sets the authentication cookie |
+| POST | `/api/auth/logout` | `200`; clears the authentication cookie |
+| GET | `/api/users/profile` | `200`; authenticated caller's own profile only |
+
+Passwords are hashed with bcrypt before persistence. Login returns user details without the password and sets a signed one-hour JWT in an HTTP-only cookie. The cookie is `SameSite=Strict`, and is `Secure` in production. Send the cookie jar with subsequent requests. Registration accepts `username`, `email`, and `password`; the role always defaults to `patron`. The profile endpoint derives the user from the verified cookie, and ignores client-supplied identity values.
+
+Creating, updating, and deleting books requires an authenticated librarian. No token returns `401`; an authenticated patron receives `403`. The seeded librarian credentials above can be used to exercise these routes.
 
 ### Genres
 
@@ -62,3 +75,9 @@ Import [postman/library-catalog.postman_collection.json](postman/library-catalog
 ## Schema Design
 
 `Book` embeds its catalog title, author, ISBN, description, cover URL, and copy counts because these values are read together. Its genre is a reference so shared names/slugs remain consistent. `Genre` stores unique `name` and lowercase `slug` values. Copy-count schema validation prevents available inventory from exceeding total inventory.
+
+## Token Storage
+
+The API stores the signed JWT in a browser-managed, HTTP-only cookie named `library_token`; it does not return the token in JSON or ask the frontend to keep it in localStorage. The browser sends the cookie automatically on requests to the API, and the server verifies its signature and expiry before loading the current user and role from MongoDB. The cookie is marked `SameSite=Strict` to reduce cross-site request forgery risk, `Secure` in production so it is only sent over HTTPS, and `HttpOnly` so ordinary page JavaScript cannot read or copy it. Frontends hosted on another origin must use credentialed requests and have an explicitly configured, trusted CORS origin; the default API does not enable cross-origin access.
+
+This choice trades some deployment flexibility for improved protection against token theft through cross-site scripting. `HttpOnly` prevents scripts from extracting the credential, but it does not stop injected same-origin JavaScript from making requests as the user; input handling and content security still matter. Cookies are sent automatically, so CSRF must also be considered: strict same-site behavior is a defense-in-depth measure, and production deployments that need cross-site clients should add a CSRF token mechanism rather than loosening cookie policy without protection. A strict same-site cookie may also complicate legitimate flows that navigate from another site. Logout clears the cookie in the client; this stateless JWT is not placed on a server-side denylist, so a previously copied token remains valid until its one-hour expiry. The short expiry limits that residual risk while avoiding session-store infrastructure.

@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Book = require('../models/Book');
 const { validate, validateObjectId } = require('../middleware/validate');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -80,7 +81,7 @@ router.get('/:id', validateObjectId(), async (req, res, next) => {
   }
 });
 
-router.post('/', validate('book'), async (req, res, next) => {
+router.post('/', requireAuth, requireRole('librarian'), validate('book'), async (req, res, next) => {
   try {
     const book = await Book.create(req.body);
     return res.status(201).json(await book.populate('genre', 'name slug'));
@@ -89,7 +90,7 @@ router.post('/', validate('book'), async (req, res, next) => {
   }
 });
 
-router.put('/:id', validateObjectId(), validate('book'), async (req, res, next) => {
+router.put('/:id', requireAuth, requireRole('librarian'), validateObjectId(), validate('book'), async (req, res, next) => {
   try {
     const book = await Book.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -102,7 +103,7 @@ router.put('/:id', validateObjectId(), validate('book'), async (req, res, next) 
   }
 });
 
-router.delete('/:id', validateObjectId(), async (req, res, next) => {
+router.delete('/:id', requireAuth, requireRole('librarian'), validateObjectId(), async (req, res, next) => {
   try {
     const book = await Book.findByIdAndDelete(req.params.id);
     if (!book) return res.status(404).json({ error: 'Book not found.' });
