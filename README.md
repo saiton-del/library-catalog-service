@@ -1,6 +1,6 @@
 # Library Catalog Service
 
-An Express and MongoDB/Mongoose REST API plus a React patron-facing catalog. Books reference shared genre records by ObjectId.
+An Express and MongoDB/Mongoose REST API plus a React patron and librarian interface in `client/`. Books reference shared genre records by ObjectId.
 
 ## Requirements and setup
 
@@ -22,15 +22,17 @@ Keep the API running in one terminal (`npm start` from the repository root) and 
 2. Run `npm run dev` from `client/` and open the local URL printed by Vite (normally `http://localhost:5173`).
 3. If the catalog is empty, run `npm run seed` from the repository root, then reload the browser.
 
-Vite proxies `/books` and `/genres` to the local API at `http://localhost:3000`. The client uses the API's server-side genre filter and search together with page/limit parameters, rather than downloading the whole collection; this keeps the browser payload small and makes result totals/pagination accurate. Search is debounced by 400 ms and synchronized to the URL. The grid adapts from two columns on narrow screens to three or four on wider screens.
+Vite proxies `/books`, `/genres`, and `/api` to the local API at `http://localhost:3000`. The client uses the API's server-side genre filter and search together with page/limit parameters, rather than downloading the whole collection; this keeps the browser payload small and makes result totals/pagination accurate. Search is debounced by 400 ms and synchronized to the URL. The grid adapts from two columns on narrow screens to three or four on wider screens.
 
 ### Week 5: reading list, account, and booking flow
 
 The reading list is stored in browser `localStorage` under `stacks-reading-list`. This keeps the feature independent of a backend reading-list API, makes saved books available immediately after refresh, and is suitable for the current single-browser assignment. It is device- and browser-specific, can be cleared by the user or browser settings, and does not synchronize between devices or accounts; a future version could move it to an authenticated server-side list. Book cards and detail pages can add/remove entries, and `/reading-list` displays or clears them.
 
-The login and registration pages use the real `/api/auth/login` and `/api/auth/register` endpoints. Requests include browser credentials so the API's HTTP-only auth cookie is used; auth status is restored from `/api/users/profile` at app startup. Registration creates a patron and signs the new account in. `/booking` is protected by a route guard, remembers the requested destination, and redirects signed-out visitors to `/login`. The booking form captures a space, date, start time, and end time locally, validates the time order, and does not submit a booking to the API yet.
+The login and registration pages use the real `/api/auth/login` and `/api/auth/register` endpoints. Requests include browser credentials so the API's HTTP-only auth cookie is used; auth status is restored from `/api/users/profile` at app startup. Registration creates a patron and signs the new account in. `/booking` is protected by a route guard, remembers the requested destination, and redirects signed-out visitors to `/login`. The booking form captures a space, date, start time, and end time, then submits to the API, which checks conflicts before saving.
 
 **Week 5 recording:** capture this sequence after starting the API and frontend: save a catalog book, open **Reading list**, refresh and show the saved card remains, remove it, sign out, type `/booking` directly and show the redirect to sign-in, log in, open **Book a space**, and complete the four fields. Add the recording/GIF at `client/demo/week-5-flow.gif` and replace/embed this line with its repository link before submission. No recording is committed yet.
+
+**Week 6 recording:** using the seeded librarian account in a separate session, show a patron requesting a book from **Reading list**, the librarian opening **Librarian → Borrow requests**, changing the request to `returned`, and the calculated fine displayed. Then create a space booking and submit an overlapping booking for the same space/date to show the server's `409` conflict. Add the recording/GIF at `client/demo/week-6-flow.gif` and link/embed it here before final submission. No recording is committed yet.
 
 **Demo flow:** open the catalog and browse the grid, choose a genre, type a title or author into search while keeping the genre selected, then open a result card to show its detail page. For the assignment's short recording, capture that sequence at a desktop width and briefly resize to mobile. Suggested filename/link after recording: `[add a short GIF or screen-recording URL here]`. No recording is included yet; add the resulting GIF to the repository (for example `client/demo/catalog-flow.gif`) and link/embed it here before final submission.
 
@@ -52,6 +54,26 @@ All request and response bodies use JSON. Create and update requests reject miss
 Passwords are hashed with bcrypt before persistence. Login returns user details without the password and sets a signed one-hour JWT in an HTTP-only cookie. The cookie is `SameSite=Strict`, and is `Secure` in production. Send the cookie jar with subsequent requests. Registration accepts `username`, `email`, and `password`; the role always defaults to `patron`. The profile endpoint derives the user from the verified cookie, and ignores client-supplied identity values.
 
 Creating, updating, and deleting books requires an authenticated librarian. No token returns `401`; an authenticated patron receives `403`. The seeded librarian credentials above can be used to exercise these routes.
+
+### Borrow requests and space bookings
+
+| Method | Endpoint | Access and behavior |
+| --- | --- | --- |
+| POST | `/api/borrow-requests` | Authenticated user; body `{ "bookId": "..." }`; reserves an available copy and creates a 14-day pending request |
+| GET | `/api/borrow-requests` | Authenticated user; patrons see only their requests, librarians see all requests |
+| PATCH | `/api/borrow-requests/:id` | Librarian only; body contains only a new `status` |
+| POST | `/api/bookings` | Authenticated user; creates a space booking if the selected time is free |
+| GET | `/api/bookings` | Librarian only; lists all bookings |
+
+Borrow request identity, request date, due date, returned date, and fine are server-controlled. Creating a request requires an existing book with at least one available copy; a copy is reserved atomically, and a failed request creation restores it. A librarian can set `pending`, `approved`, `late`, or `returned`. Returning a book restores its available-copy count once; returned requests cannot be reopened.
+
+**Fine rule:** a loan is due 14 × 24 hours after it is requested by default (`LOAN_PERIOD_DAYS` can be configured from 0 to 365). When a librarian changes its status to `returned`, the server charges **$0.25 per started 24-hour day after `dueAt`**, rounded to cents (`ceil((returnedAt - dueAt) / 24 hours) × $0.25`). On-time or early returns have a $0 fine. The client cannot provide or override this value. For a local-only recording, temporarily set `LOAN_PERIOD_DAYS=0`, create a borrow request, then return it; restore the normal 14-day setting afterward.
+
+Booking times use 24-hour `HH:mm` values and a date stored at UTC midnight. Before inserting a booking, the server searches for an existing booking with the same space and date whose start is earlier than the requested end and whose end is later than the requested start. This is the half-open interval overlap rule `existing.start < requested.end && existing.end > requested.start`; adjacent bookings such as 10:00–11:00 and 11:00–12:00 are allowed, while any partial or complete intersection returns `409 Conflict`.
+
+### Librarian pages
+
+Sign in using the seeded librarian account to access `/admin/books`, `/admin/borrow-requests`, and `/admin/bookings`. These pages call the live API: books support create/edit/delete; borrow requests show server-computed fines and send status changes; bookings show the server's booking records. Both the client routes and backend mutations enforce librarian access. Patrons are redirected away from these screens, and the API remains the final authorization boundary.
 
 ### Genres
 

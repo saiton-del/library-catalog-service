@@ -6,6 +6,9 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ReadingListPage from './pages/ReadingListPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
+import AdminBooksPage from './pages/admin/AdminBooksPage.jsx';
+import AdminBorrowRequestsPage from './pages/admin/AdminBorrowRequestsPage.jsx';
+import AdminBookingsPage from './pages/admin/AdminBookingsPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { useReadingList } from './hooks/useReadingList.js';
@@ -35,7 +38,7 @@ function SiteHeader() {
         <Link to="/" className="header-nav__link">The collection</Link>
         <Link to="/reading-list" className="header-nav__link reading-list-nav">Reading list <span>{readingList.length}</span></Link>
         {user ? (
-          <div className="account-nav"><Link to="/booking" className="header-nav__link">Book a space</Link><button type="button" className="header-nav__link sign-out-button" onClick={signOut}><LogOut size={14} /> Sign out</button></div>
+          <div className="account-nav"><Link to="/booking" className="header-nav__link">Book a space</Link>{user.role === 'librarian' && <Link to="/admin/books" className="header-nav__link">Librarian</Link>}<button type="button" className="header-nav__link sign-out-button" onClick={signOut}><LogOut size={14} /> Sign out</button></div>
         ) : (
           <Link to="/login" className="header-nav__link sign-in-link">Sign in</Link>
         )}
@@ -67,6 +70,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/booking" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
+        <Route path="/admin/books" element={<ProtectedRoute requireRole="librarian"><AdminBooksPage /></ProtectedRoute>} />
+        <Route path="/admin/borrow-requests" element={<ProtectedRoute requireRole="librarian"><AdminBorrowRequestsPage /></ProtectedRoute>} />
+        <Route path="/admin/bookings" element={<ProtectedRoute requireRole="librarian"><AdminBookingsPage /></ProtectedRoute>} />
         <Route path="*" element={<CatalogPage />} />
       </Routes>
       <SiteFooter />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CalendarDays, Check, Clock3, MapPin } from 'lucide-react';
+import { fetchJson } from '../lib/api.js';
 
 const spaces = ['The Reading Room', 'Quiet Study Nook', 'Community Table', 'Garden Terrace'];
 
@@ -7,6 +8,7 @@ export default function BookingForm() {
   const [form, setForm] = useState({ space: '', date: '', startTime: '', endTime: '' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
   const update = (event) => {
@@ -15,7 +17,7 @@ export default function BookingForm() {
     setError('');
   };
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     if (form.endTime <= form.startTime) {
       setError('Choose an end time later than your start time.');
@@ -23,7 +25,16 @@ export default function BookingForm() {
       return;
     }
     setError('');
-    setMessage(`${form.space} is on your plan for ${form.date}, ${form.startTime}–${form.endTime}. This draft is saved in this form only; booking requests will be enabled soon.`);
+    setMessage('');
+    setSaving(true);
+    try {
+      await fetchJson('/api/bookings', { method: 'POST', body: form });
+      setMessage(`${form.space} is booked for ${form.date}, ${form.startTime}–${form.endTime}.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -51,8 +62,8 @@ export default function BookingForm() {
       </div>
       {error && <p className="form-feedback form-feedback--error" role="alert">{error}</p>}
       {message && <p className="form-feedback form-feedback--success" role="status"><Check size={16} /> {message}</p>}
-      <button className="button button--dark booking-submit" type="submit">Save booking draft</button>
-      <p className="booking-note">This is a local preview only. Booking requests are coming soon.</p>
+      <button className="button button--dark booking-submit" type="submit" disabled={saving}>{saving ? 'Checking availability…' : 'Reserve this space'}</button>
+      <p className="booking-note">Availability is checked by the library server before a booking is saved.</p>
     </form>
   );
 }

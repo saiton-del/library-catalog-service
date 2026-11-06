@@ -21,7 +21,10 @@ export async function fetchJson(path, options = {}) {
   const body = contentType.includes('application/json') ? await response.json() : null;
 
   if (!response.ok) {
-    throw new Error(body?.error || `Request failed (${response.status}).`);
+    const fieldErrors = Array.isArray(body?.fields)
+      ? body.fields.map((item) => `${item.field}: ${item.message}`).join(' ')
+      : '';
+    throw new Error(fieldErrors || body?.error || `Request failed (${response.status}).`);
   }
   return body;
 }

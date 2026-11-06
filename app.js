@@ -2,6 +2,8 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const authRouter = require('./routes/auth');
 const booksRouter = require('./routes/books');
+const bookingsRouter = require('./routes/bookings');
+const borrowRequestsRouter = require('./routes/borrowRequests');
 const genresRouter = require('./routes/genres');
 const usersRouter = require('./routes/users');
 
@@ -11,6 +13,8 @@ app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/borrow-requests', borrowRequestsRouter);
+app.use('/api/bookings', bookingsRouter);
 app.use('/books', booksRouter);
 app.use('/genres', genresRouter);
 
