@@ -1,6 +1,6 @@
 # Library Catalog Service
 
-An Express and MongoDB/Mongoose REST API for a library catalog. Books reference shared genre records by ObjectId.
+An Express and MongoDB/Mongoose REST API plus a React patron-facing catalog. Books reference shared genre records by ObjectId.
 
 ## Requirements and setup
 
@@ -13,6 +13,20 @@ An Express and MongoDB/Mongoose REST API for a library catalog. Books reference 
 4. Start the API with `npm start` (or `npm run dev` for Node's watch mode). The default URL is `http://localhost:3000`; set `PORT` to change it.
 
 The seed command clears the existing `books` and `genres` documents before inserting four genres and sixteen books. It also removes existing librarian-role accounts and creates exactly one test librarian; other user accounts are preserved. It logs inserted totals and closes the MongoDB connection even if seeding fails. **Test librarian:** `librarian@example.com` / `LibraryAdmin123!`. This known password is for local assignment testing only; change or remove the account before production use.
+
+## Frontend setup and demo
+
+Keep the API running in one terminal (`npm start` from the repository root) and start the React app in another:
+
+1. In `client/`, run `npm install` once.
+2. Run `npm run dev` from `client/` and open the local URL printed by Vite (normally `http://localhost:5173`).
+3. If the catalog is empty, run `npm run seed` from the repository root, then reload the browser.
+
+Vite proxies `/books` and `/genres` to the local API at `http://localhost:3000`. The client uses the API's server-side genre filter and search together with page/limit parameters, rather than downloading the whole collection; this keeps the browser payload small and makes result totals/pagination accurate. Search is debounced by 400 ms and synchronized to the URL. The grid adapts from two columns on narrow screens to three or four on wider screens.
+
+**Demo flow:** open the catalog and browse the grid, choose a genre, type a title or author into search while keeping the genre selected, then open a result card to show its detail page. For the assignment's short recording, capture that sequence at a desktop width and briefly resize to mobile. Suggested filename/link after recording: `[add a short GIF or screen-recording URL here]`. No recording is included yet; add the resulting GIF to the repository (for example `client/demo/catalog-flow.gif`) and link/embed it here before final submission.
+
+To build the frontend bundle, run `npm run build` in `client/`; use `npm run preview` there to preview it locally. For deployment, configure the frontend host to reach the API at the same origin or set `VITE_API_BASE_URL` to an API origin that explicitly allows that frontend origin.
 
 ## API
 
