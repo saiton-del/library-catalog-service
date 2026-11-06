@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, Check, Copy, Library, Share2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, BookmarkCheck, BookmarkPlus, Check, Copy, Library, Share2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchJson } from '../lib/api.js';
+import { useReadingList } from '../hooks/useReadingList.js';
 
 export default function BookDetailPage() {
   const { id } = useParams();
@@ -10,6 +11,7 @@ export default function BookDetailPage() {
   const [error, setError] = useState('');
   const [coverFailed, setCoverFailed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { readingList, addBook, removeBook } = useReadingList();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,6 +57,7 @@ export default function BookDetailPage() {
   }
 
   const genreName = typeof book.genre === 'object' ? book.genre?.name : 'From the collection';
+  const isSaved = readingList.some((item) => item._id === book._id);
 
   return (
     <main className="detail-page">
@@ -93,6 +96,10 @@ export default function BookDetailPage() {
 
           <button type="button" className="button button--terracotta detail-share" onClick={() => navigator.share?.({ title: book.title, url: window.location.href })}>
             <Share2 size={16} /> Share this story
+          </button>
+          <button type="button" className="button button--save-detail" aria-pressed={isSaved} onClick={() => (isSaved ? removeBook(book._id) : addBook(book))}>
+            {isSaved ? <BookmarkCheck size={16} /> : <BookmarkPlus size={16} />}
+            {isSaved ? 'Saved to your reading list' : 'Save for another day'}
           </button>
           <p className="detail-footnote">A little adventure is always close to home.</p>
         </article>
